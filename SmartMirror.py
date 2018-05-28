@@ -26,8 +26,10 @@ news_country_code = 'us'
 weather_api_token = '<TOKEN>' # create account at https://darksky.net/dev/
 weather_lang = 'en' # see https://darksky.net/dev/docs/forecast for full list of language parameters values
 weather_unit = 'us' # see https://darksky.net/dev/docs/forecast for full list of unit parameters values
-latitude = None # Set this if IP location lookup does not work for you (must be a string)
-longitude = None # Set this if IP location lookup does not work for you (must be a string)
+lat = None # Set this if IP location lookup does not work for you (must be a string)
+lon = None # Set this if IP location lookup does not work for you (must be a string)
+loccity = None #Set this if IP location City Name
+locregion = None #Set this if IP location Region Name
 xlarge_text_size = 94
 large_text_size = 48
 medium_text_size = 28
@@ -127,21 +129,26 @@ class Weather(Frame):
 
     def get_weather(self):
         try:
+            global lat
+            global lon
+            
             weather_api_token = '5e4e45f4e6c9b6a651f7130ab2f192ca'
             owm = OWM(weather_api_token, language='ko')
-
+            
             # get location
-            url = 'https://maps.googleapis.com/maps/api/geocode/json'
-            params = {'sensor': 'false', 'address': 'Yonam University, 가좌동 진주시 경상남도'}
-            r = requests.get(url, params=params)
-            results = r.json()['results']
-            location = results[0]['geometry']['location']
+            if(lat is None and lon is None):
+                global loccity
+                global locregion
+                url = 'https://maps.googleapis.com/maps/api/geocode/json'
+                params = {'sensor': 'false', 'address': 'Yonam University, 가좌동 진주시 경상남도'}
+                r = requests.get(url, params=params)
+                results = r.json()['results']
+                location = results[0]['geometry']['location']
+                lat = location['lat']
+                lon = location['lng']
 
-            lat = location['lat']
-            lon = location['lng']
-
-            loccity = results[0]['address_components'][2]['long_name']
-            locregion = results[0]['address_components'][3]['long_name']
+                loccity = results[0]['address_components'][2]['long_name']
+                locregion = results[0]['address_components'][3]['long_name']
 
             obs = owm.weather_at_coords(lat, lon)
 
@@ -200,7 +207,7 @@ class Weather(Frame):
             print("Error: %s. Cannot get weather." % e)
 
         self.after(600000, self.get_weather)
-
+       
     @staticmethod
     def convert_kelvin_to_fahrenheit(kelvin_temp):
         return 1.8 * (kelvin_temp - 273) + 32
@@ -326,4 +333,3 @@ class FullscreenWindow:
 if __name__ == '__main__':
     w = FullscreenWindow()
     w.tk.mainloop()
-
