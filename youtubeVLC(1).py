@@ -33,52 +33,57 @@ import platform
 DEVELOPER_KEY = "AIzaSyBfxBMi3ytFSrcBxbKw8CaerNOM8uxsTZo"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
-FREEBASE_SEARCH_URL = "https://kgsearch.googleapis.com/v1/entities:search?%s"
+#FREEBASE_SEARCH_URL = "https://kgsearch.googleapis.com/v1/entities:search?%s"
 
-def get_topic_id(options):
-  # Retrieve a list of Freebase topics associated with the provided query term.
-  freebase_params = dict(query=options.query, limit=options.limit, indent=options.indent, key=DEVELOPER_KEY)
-  freebase_url = FREEBASE_SEARCH_URL % urllib.parse.urlencode(freebase_params)
-  freebase_response = json.loads(urllib.request.urlopen(freebase_url).read())
+# def get_topic_id(options):
+#   # Retrieve a list of Freebase topics associated with the provided query term.
+#   freebase_params = dict(query=options.query, limit=options.limit, indent=options.indent, key=DEVELOPER_KEY)
+#   print(freebase_params)
+#   freebase_url = FREEBASE_SEARCH_URL % urllib.parse.urlencode(freebase_params)
+#   print(freebase_url)
+#   freebase_response = json.loads(urllib.request.urlopen(freebase_url).read())
+#   print(freebase_response)
+#
+#
+#   if len(freebase_response["itemListElement"]) == 0:
+#      exit("No matching terms were found in Freebase.")
+#
+#   # 매칭된 리스트를 보여준다.
+#   mids = []
+#   index = 1
+#   print("The following topics were found:")
+#   for result in freebase_response["itemListElement"]:
+#     mids.append(result["result"]['@id'])#result.get(key,default)
+#     print("  %2d. %s" % (index, (result.get("result")).get("name")))
+#     index += 1
+#
+#   # Display a prompt for the user to select a topic and return the topic ID
+#   # of the selected topic.
+#   mid = None
+#   while mid is None:
+#     index = input("Enter a topic number to find related YouTube %ss: " %
+#       options.indent)
+#     try:
+#       mid = mids[int(index) - 1]
+#     except ValueError:
+#       pass
+#   return mid
 
 
-  if len(freebase_response["itemListElement"]) == 0:
-     exit("No matching terms were found in Freebase.")
-
-  # 매칭된 리스트를 보여준다.
-  mids = []
-  index = 1
-  print("The following topics were found:")
-  for result in freebase_response["itemListElement"]:
-    mids.append(result["result"]['@id'])#result.get(key,default)
-    print("  %2d. %s" % (index, (result.get("result")).get("name")))
-    index += 1
-
-  # Display a prompt for the user to select a topic and return the topic ID
-  # of the selected topic.
-  mid = None
-  while mid is None:
-    index = input("Enter a topic number to find related YouTube %ss: " %
-      options.indent)
-    try:
-      mid = mids[int(index) - 1]
-    except ValueError:
-      pass
-  return mid
-
-
-def youtube_search(mid, options):
+def youtube_search(options): #첫 번째 파라미터인 mid 잠시 주석처리.
   youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
   developerKey=DEVELOPER_KEY)
 
   youtube_video_url = "https://www.youtube.com/watch?v={0}"
   youtube_playlist_url = "https://www.youtube.com/playlist?list={0}"
+  youtub_channel_url = "https://www.youtube.com/channel/{0}"
 
   # Call the search.list method to retrieve results associated with the
   # specified Freebase topic.
   search_response = youtube.search().list(
-    topicId=mid,
-    type=options.indent,
+    #topicId=mid,
+    #type=options.indent,
+    q = options.query,
     part="id,snippet",
     maxResults=options.limit
   ).execute()
@@ -102,7 +107,8 @@ def youtube_search(mid, options):
     url = youtube_video_url.format(videos[0])
   elif playlists:
     url = youtube_playlist_url.format(playlists[0])
-
+  elif channels:
+    url = youtub_channel_url.format(channels[0])
 
   video = pafy.new(url)
   best = video.getbest()
@@ -129,11 +135,11 @@ class Player(Tk.Frame):
 
         ctrlpanel = ttk.Frame(self.parent)
         pause = ttk.Button(ctrlpanel, text="Pause", command=self.OnPause)
-        play = ttk.Button(ctrlpanel, text="Play", command=self.OnPlay)
+        #play = ttk.Button(ctrlpanel, text="Play", command=self.OnPlay)
         stop = ttk.Button(ctrlpanel, text="Stop", command=self.OnStop)
         volume = ttk.Button(ctrlpanel, text="Volume", command=self.OnSetVolume)
         pause.pack(side=Tk.LEFT)
-        play.pack(side=Tk.LEFT)
+        #play.pack(side=Tk.LEFT)
         stop.pack(side=Tk.LEFT)
         volume.pack(side=Tk.LEFT)
         self.volume_var = Tk.IntVar()
@@ -144,7 +150,8 @@ class Player(Tk.Frame):
         # VLC player controls
         self.Instance = vlc.Instance()
         self.player = self.Instance.media_player_new()
-
+        print("1")
+        self.OnPlay()
         # self.timer = ttkTimer(self.OnTimer, 1.0)
         # self.timer.start()
         # self.parent.update()
@@ -155,20 +162,25 @@ class Player(Tk.Frame):
         """
         # check if there is a file to play, otherwise open a
         # Tk.FileDialog to select a file
-        if not self.player.get_media():
-            self.Media = self.Instance.media_new(self.youtube_url)
-            self.player.set_media(self.Media)
+        print("1-1")
 
-            # set the window id where to render VLC's video output
-            if platform.system() == 'Windows':
-                self.player.set_hwnd(self.GetHandle())
-            else:
-                self.player.set_xwindow(self.GetHandle())  # this line messes up windows
-            # FIXME: this should be made cross-platform
+
+        self.Media = self.Instance.media_new(self.youtube_url)
+        self.player.set_media(self.Media)
+
+        # set the window id where to render VLC's video output
+        if platform.system() == 'Windows':
+            print("1-3")
+            self.player.set_hwnd(self.GetHandle())
         else:
-            # Try to launch the media, if this fails display an error message
-            if self.player.play() == -1:
-                self.errorDialog("Unable to play.")
+            print("1-4")
+            self.player.set_xwindow(self.GetHandle())  # this line messes up windows
+        # FIXME: this should be made cross-platform
+
+        # Try to launch the media, if this fails display an error message
+        if self.player.play() == -1:
+            print("1-6")
+            self.errorDialog("Unable to play.")
 
     def GetHandle(self):
         return self.videopanel.winfo_id()
@@ -239,14 +251,15 @@ if __name__ == "__main__":
     youtube_url = ""
     print("검색을 하세요.")
     query = input()
-    argparser.add_argument("--query", help="kgsearch search term", default="Taylor Swift")
+    argparser.add_argument("--query", help="kgsearch search term", default=query)
     argparser.add_argument("--limit", help="Max YouTube results", default=10)
     argparser.add_argument("--indent",help="YouTube result type: video, playlist, or channel", default="True")
     args = argparser.parse_args()
 
-    mid = get_topic_id(args)
+    #mid = get_topic_id(args)
     try:
-        youtube_url = youtube_search(mid, args)
+        #youtube_url = youtube_search(mid, args)
+        youtube_url = youtube_search(args)
     except HttpError as e:
         print("An HTTP error %d occurred:\n%s" % (e.resp.status, e.content))
 
